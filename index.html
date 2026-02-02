@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" />
+<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-FileCopyrightText: Copyright 2026 Sam Blenny -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebRTC Console</title>
+<link rel="icon" href="data:,"> <!-- empty favicon avoids typical 404 -->
+<style>
+<style>
+ :root{ color-scheme: light dark; } /* use system's dark mode setting */
+ :root{--F: #ffdcec; --B: #1d1d1d; --H: #25c3c0; --L: #459cda; --O: #444;
+  --BTN: #32ea39; --PAD: 25px; --WIDE: 640px; --HIGH: 480px; }
+ @media (prefers-color-scheme: light){
+  :root{--F: #101010; --B: #f5f5f5; --H: #313131; --L: #3f40f9; --O: #aaa;
+   --BTN: #3dff4d; }
+ }
+ html{ background: var(--B); -webkit-text-size-adjust: none; }
+ body{ background: var(--B); color: var(--F); min-height: 100vh;
+  width: 100%; font-family: sans-serif; font-size: 17px; }
+ html,body,h1,h2,main,input{ margin: 0; padding: 0; box-sizing: border-box; }
+ video,canvas{ margin: 0; padding: 0; box-sizing: content-box; }
+ p,li,label{ line-height: 1.23em; }
+ label,select{ display: inline-block; min-height: 20px; }
+ label{ margin: 12px 3px 12px 18px; }
+ input{ margin: 12px 3px 12px 3px; }
+ h1{ margin: 10px 0 10px 0px; font-size: 24px; color: var(--H); }
+ h2{ margin: 20px 0 10px 0px; font-size: 20px; color: var(--H); }
+ a{ color: var(--L); }
+ p{ margin: 11px 0; }
+ .clear{ clear: both; }
+ main{ margin: 0 auto; padding: 2px var(--PAD) 115px var(--PAD);
+  max-width: calc((2 * var(--PAD)) + var(--WIDE)); }
+ #serial{ float: right; background: var(--BTN); font-size: 1.1em;
+  padding: 10px; border-radius: 13px; border: 2px solid var(--H); }
+ #serial.on{ background: var(--B); color: var(--F); }
+ canvas{ display: inline-block; width: var(--WIDE); height: var(--HIGH);
+  margin: 10px auto; background: var(--O); }
+ @media (max-width: 530px) { /* try not to overflow narrow screens */
+  :root{--PAD: 13px;}
+  body{ font-size: 16px; }
+  canvas{ width: 100%; height: auto; }
+ }
+</style>
+</head>
+<body>
+<main>
+<h1>WebRTC Console</h1>
+
+<button id="connect">Connect</button>
+
+<p>status: <span id="status">loading...</span></p>
+
+<p class="clear">
+<canvas id="canvas">
+</p>
+
+<script src="main.js"></script>
+
+</main>
+</body>
+</html>
