@@ -22,6 +22,10 @@
  label,select{ display: inline-block; min-height: 20px; }
  label{ margin: 12px 3px 12px 18px; }
  input{ margin: 12px 3px 12px 3px; }
+ input#serverUrl{ width: 200px; }
+ button{ background: var(--BTN); font-size: 1.1em;
+  padding: 10px; border-radius: 13px; border: 2px solid var(--H); }
+ button.on{ background: var(--B); color: var(--F); }
  h1{ margin: 10px 0 10px 0px; font-size: 24px; color: var(--H); }
  h2{ margin: 20px 0 10px 0px; font-size: 20px; color: var(--H); }
  a{ color: var(--L); }
@@ -29,10 +33,7 @@
  .clear{ clear: both; }
  main{ margin: 0 auto; padding: 2px var(--PAD) 115px var(--PAD);
   max-width: calc((2 * var(--PAD)) + var(--WIDE)); }
- #serial{ float: right; background: var(--BTN); font-size: 1.1em;
-  padding: 10px; border-radius: 13px; border: 2px solid var(--H); }
- #serial.on{ background: var(--B); color: var(--F); }
- canvas{ display: inline-block; width: var(--WIDE); height: var(--HIGH);
+ video{ display: inline-block; width: var(--WIDE); height: var(--HIGH);
   margin: 10px auto; background: var(--O); }
  @media (max-width: 530px) { /* try not to overflow narrow screens */
   :root{--PAD: 13px;}
@@ -45,12 +46,14 @@
 <main>
 <h1>WebRTC Console</h1>
 
+<label for="serverUrl">Server URL:</label>
+<input type="text" id="serverUrl" value="http://192.168.2.2:8080">
 <button id="connect">Connect</button>
 
 <p>status: <span id="status">loading...</span></p>
 
 <p class="clear">
-<canvas id="canvas">
+<video id="video" playsinline autoplay></video>
 </p>
 
 <script src="main.js"></script>
