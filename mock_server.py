@@ -17,7 +17,10 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # port 5000. In WebRTC handshake, browser sends an offer first, and server
 # responds with this answer to complete negotiation. Note: This mock answer
 # uses dummy/fake values for DTLS fingerprint, ICE username, and ICE password
-# since we're not doing actual media exchange yet.
+# since we're not doing actual media exchange yet. RTCP-MUX enables
+# multiplexing RTP and RTCP control traffic on the same UDP port, reducing
+# port usage and complexity. GStreamer server must be configured to support
+# this when it's implemented.
 MOCK_ANSWER = {
     "type": "answer",
     "sdp": "v=0\r\n"
@@ -26,6 +29,19 @@ MOCK_ANSWER = {
            "t=0 0\r\n"
            "a=extmap-allow-mixed\r\n"
            "a=msid-semantic: WMS\r\n"
+           "m=video 5000 RTP/SAVPF 96\r\n"
+           "a=rtpmap:96 VP8/90000\r\n"
+           "a=fmtp:96 x-google-start-bitrate=1000\r\n"
+           "a=ice-ufrag:mockufrag1234567890ab\r\n"
+           "a=ice-pwd:mockpwdmockpwdmockpwdmockpwd\r\n"
+           "a=fingerprint:sha-256 "
+           "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+           "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00\r\n"
+           "a=setup:passive\r\n"
+           "a=mid:0\r\n"
+           "a=rtcp-mux\r\n"
+           "a=rtpmap:96 VP8/90000\r\n"
+           "a=sendonly\r\n"
 }
 
 # Hardcoded mock ICE candidates. ICE (Interactive Connectivity
@@ -58,13 +74,8 @@ class SignalingHandler(BaseHTTPRequestHandler):
     def _get_cors_origin(self):
         """Return the Origin header if it's in allowed list, else None."""
         origin = self.headers.get('Origin', '')
-        print(f'[Server] Received Origin header: "{origin}"', file=sys.stderr)
-        print(f'[Server] Allowed origins: {self.ALLOWED_ORIGINS}',
-              file=sys.stderr)
         if origin in self.ALLOWED_ORIGINS:
-            print(f'[Server] Origin matched!', file=sys.stderr)
             return origin
-        print(f'[Server] Origin not in allowed list', file=sys.stderr)
         return None
 
     def do_OPTIONS(self):
@@ -118,8 +129,6 @@ class SignalingHandler(BaseHTTPRequestHandler):
         Log the offer (for debugging) and return hardcoded answer.
         """
         print(f'[Server] Received SDP offer')
-        print(f'[Server] Offer type: {offer.get("type")}')
-        print(f'[Server] SDP:\n{offer.get("sdp")}')
         self._send_json(MOCK_ANSWER)
 
     def _handle_ice_candidate(self, candidate):
@@ -132,9 +141,6 @@ class SignalingHandler(BaseHTTPRequestHandler):
             print(f'[Server] Received end-of-candidates marker')
         else:
             print(f'[Server] Received ICE candidate from browser')
-            print(f'[Server]   sdpMid: {candidate.get("sdpMid")}')
-            print(f'[Server]   index: {candidate.get("sdpMLineIndex")}')
-            print(f'[Server]   cand: {cand_str[:60]}...')
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

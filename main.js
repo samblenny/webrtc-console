@@ -45,6 +45,13 @@ async function connect() {
         WEB_RTC = peerConnection;
         console.log('[WebRTC] Created RTCPeerConnection');
 
+        // Step 1b: Add video transceiver to announce browser can receive video.
+        // This makes the browser include a video m-line in its offer with
+        // a=recvonly direction. The server will answer with a=sendonly,
+        // allowing both sides to negotiate ICE candidates for the video stream.
+        peerConnection.addTransceiver('video', {send: false, recv: true});
+        console.log('[WebRTC] Added video transceiver (recv only)');
+
         // Step 2: Set up ICE candidate handler. ICE (Interactive Connectivity
         // Establishment) discovers network paths between peers by exchanging
         // candidates (possible addresses they can receive on). Both sides
@@ -54,6 +61,7 @@ async function connect() {
             if (event.candidate !== null) {
                 // Browser generated a candidate with its address and port.
                 // POST it to server so server knows where to send packets.
+                console.log('[WebRTC] Generated ICE candidate');
                 const candidate = {
                     candidate: event.candidate.candidate,
                     sdpMid: event.candidate.sdpMid,
@@ -63,17 +71,21 @@ async function connect() {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(candidate)
-                }).catch(e => console.error(
-                    '[WebRTC] Failed to POST candidate:', e));
+                }).catch(e => {
+                    console.error('[WebRTC] Failed to POST candidate:', e);
+                });
             } else {
                 // event.candidate === null signals end of ICE gathering.
                 // POST empty candidate marker to tell server we're done.
+                console.log('[WebRTC] ICE gathering complete');
                 fetch(url + '/ice-candidate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({candidate: ''})
-                }).catch(e => console.error(
-                    '[WebRTC] Failed to POST end-of-candidates:', e));
+                }).catch(e => {
+                    console.error(
+                        '[WebRTC] Failed to POST end-of-candidates:', e);
+                });
             }
         };
         console.log('[WebRTC] Set up onicecandidate handler');
