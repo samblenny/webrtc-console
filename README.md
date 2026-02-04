@@ -5,4 +5,3 @@
 **DRAFT: WORK IN PROGRESS**
 
 TODO: ...
-<!-- poke GitHub Pages after Azure outage -->
