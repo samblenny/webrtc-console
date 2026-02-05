@@ -39,7 +39,7 @@ async function connect() {
     try {
         // Step 1: Create RTCPeerConnection for media exchange.
         // RTCPeerConnection manages the entire WebRTC connection lifecycle
-        // including SDP negotiation, ICE candidate gathering/exchange, and
+        // including SDP negotiation, candidate gathering/exchange, and
         // media stream handling.
         const peerConnection = new RTCPeerConnection();
         WEB_RTC = peerConnection;
@@ -48,26 +48,23 @@ async function connect() {
         // Step 1b: Add video transceiver to announce browser can receive video.
         // This makes the browser include a video m-line in its offer with
         // a=recvonly direction. The server will answer with a=sendonly,
-        // allowing both sides to negotiate ICE candidates for the video stream.
+        // allowing both sides to negotiate candidates for the video stream.
         peerConnection.addTransceiver('video', {send: false, recv: true});
         console.log('[WebRTC] Added video transceiver (recv only)');
 
-        // Step 2: Set up ICE candidate handler. ICE (Interactive Connectivity
-        // Establishment) discovers network paths between peers by exchanging
-        // candidates (possible addresses they can receive on). Both sides
-        // generate candidates and test which ones have working connectivity.
-        // We POST each candidate to the server as it's discovered (trickle ICE).
+        // Step 2: Set up candidate handler. When candidates are discovered,
+        // we POST each one to the server (trickle method).
         peerConnection.onicecandidate = (event) => {
             if (event.candidate !== null) {
                 // Browser generated a candidate with its address and port.
                 // POST it to server so server knows where to send packets.
-                console.log('[WebRTC] Generated ICE candidate');
+                console.log('[WebRTC] Generated connectivity candidate');
                 const candidate = {
                     candidate: event.candidate.candidate,
                     sdpMid: event.candidate.sdpMid,
                     sdpMLineIndex: event.candidate.sdpMLineIndex
                 };
-                fetch(url + '/ice-candidate', {
+                fetch(url + '/peer-candidate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(candidate)
@@ -75,10 +72,10 @@ async function connect() {
                     console.error('[WebRTC] Failed to POST candidate:', e);
                 });
             } else {
-                // event.candidate === null signals end of ICE gathering.
+                // event.candidate === null signals end of candidate gathering.
                 // POST empty candidate marker to tell server we're done.
-                console.log('[WebRTC] ICE gathering complete');
-                fetch(url + '/ice-candidate', {
+                console.log('[WebRTC] Candidate gathering complete');
+                fetch(url + '/peer-candidate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({candidate: ''})
@@ -88,7 +85,7 @@ async function connect() {
                 });
             }
         };
-        console.log('[WebRTC] Set up onicecandidate handler');
+        console.log('[WebRTC] Set up candidate handler');
 
         // Step 3: Set up handler for remote video track from server.
         // When server sends VP8 video via RTP, ontrack fires with the incoming
@@ -121,7 +118,7 @@ async function connect() {
         console.log('[WebRTC] Generated SDP offer');
 
         // Step 6: Set offer as local description. This tells RTCPeerConnection
-        // that we're committing to this offer and starts ICE candidate
+        // that we're committing to this offer and starts candidate
         // gathering.
         await peerConnection.setLocalDescription(offer);
         console.log('[WebRTC] Set local description with offer');
@@ -139,14 +136,14 @@ async function connect() {
 
         // Step 8: Set answer as remote description. This tells RTCPeerConnection
         // what the remote peer (server) is sending and completes SDP
-        // negotiation. After this, ICE candidate gathering and testing begins.
+        // negotiation. After this, candidate gathering and testing begins.
         await peerConnection.setRemoteDescription(answer);
         console.log('[WebRTC] Set remote description with answer');
 
-        // Step 9: Fetch ICE candidates from server (single attempt). ICE
+        // Step 9: Fetch candidates from server (single attempt). Candidates
         // candidates tell each peer where the other one is listening. We make
         // one GET request to fetch all remote candidates the server has ready.
-        const candidateResponse = await fetch(url + '/ice-candidate', {
+        const candidateResponse = await fetch(url + '/peer-candidate', {
             method: 'GET'
         });
         const candidates = await candidateResponse.json();

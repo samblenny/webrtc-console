@@ -4,7 +4,7 @@
 WebRTC Mock Signaling Server
 
 Simple HTTP server that handles WebRTC signaling for prototyping.
-Returns hardcoded SDP answer and mock ICE candidates.
+Returns hardcoded SDP answer and mock connectivity candidates.
 """
 
 import json
@@ -16,7 +16,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # ports, media types, and capabilities. This answer describes VP8 video on
 # port 5000. In WebRTC handshake, browser sends an offer first, and server
 # responds with this answer to complete negotiation. Note: This mock answer
-# uses dummy/fake values for DTLS fingerprint, ICE username, and ICE password
+# uses dummy/fake values for DTLS fingerprint, candidate authentication
 # since we're not doing actual media exchange yet. RTCP-MUX enables
 # multiplexing RTP and RTCP control traffic on the same UDP port, reducing
 # port usage and complexity. GStreamer server must be configured to support
@@ -44,12 +44,11 @@ MOCK_ANSWER = {
            "a=sendonly\r\n"
 }
 
-# Hardcoded mock ICE candidates. ICE (Interactive Connectivity
-# Establishment) candidates are possible addresses where each peer can
-# receive packets. Each candidate includes: the address (IP), port, protocol
-# (UDP), and type (host/reflexive/relay). The browser will test these
-# candidates to find which ones have working connectivity and can exchange
-# media. These mocks use localhost for testing on the same machine.
+# Hardcoded mock connectivity candidates. Candidates are possible addresses
+# where each peer can receive packets. Each candidate includes: the address
+# (IP), port, protocol (UDP), and type (host/reflexive/relay). The browser
+# will test these candidates to find which ones have working connectivity and
+# can exchange media. These mocks use localhost for testing on the same machine.
 MOCK_CANDIDATES = [
     {
         "candidate": "candidate:1 1 udp 2130706431 127.0.0.1 5000 typ host",
@@ -62,7 +61,7 @@ MOCK_CANDIDATES = [
 class SignalingHandler(BaseHTTPRequestHandler):
     """
     HTTP request handler for WebRTC signaling.
-    Handles POST /offer, GET /ice-candidate, POST /ice-candidate.
+    Handles POST /offer, GET /peer-candidate, POST /peer-candidate.
     """
 
     ALLOWED_ORIGINS = [
@@ -89,7 +88,7 @@ class SignalingHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        """Handle POST requests (SDP offer, ICE candidates from browser)."""
+        """Handle POST requests (SDP offer, candidates from browser)."""
         try:
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length).decode('utf-8')
@@ -97,8 +96,8 @@ class SignalingHandler(BaseHTTPRequestHandler):
 
             if self.path == '/offer':
                 self._handle_offer(data)
-            elif self.path == '/ice-candidate':
-                self._handle_ice_candidate(data)
+            elif self.path == '/peer-candidate':
+                self._handle_peer_candidate(data)
             else:
                 self._send_error(404, 'Not Found')
 
@@ -111,9 +110,9 @@ class SignalingHandler(BaseHTTPRequestHandler):
             self._send_error(500, 'Internal Server Error')
 
     def do_GET(self):
-        """Handle GET requests (fetch ICE candidates)."""
+        """Handle GET requests (fetch candidates)."""
         try:
-            if self.path == '/ice-candidate':
+            if self.path == '/peer-candidate':
                 self._handle_get_candidates()
             else:
                 self._send_error(404, 'Not Found')
@@ -131,16 +130,16 @@ class SignalingHandler(BaseHTTPRequestHandler):
         print(f'[Server] Received SDP offer')
         self._send_json(MOCK_ANSWER)
 
-    def _handle_ice_candidate(self, candidate):
+    def _handle_peer_candidate(self, candidate):
         """
-        Handle ICE candidate from browser.
+        Handle connectivity candidate from browser.
         Log it (for debugging) and discard it.
         """
         cand_str = candidate.get('candidate', '')
         if cand_str == '':
             print(f'[Server] Received end-of-candidates marker')
         else:
-            print(f'[Server] Received ICE candidate from browser')
+            print(f'[Server] Received connectivity candidate from browser')
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
@@ -154,8 +153,8 @@ class SignalingHandler(BaseHTTPRequestHandler):
         self.wfile.write(b'{}')
 
     def _handle_get_candidates(self):
-        """Handle GET request for ICE candidates."""
-        print(f'[Server] Browser fetching ICE candidates')
+        """Handle GET request for candidates."""
+        print(f'[Server] Browser fetching connectivity candidates')
         self._send_json(MOCK_CANDIDATES)
 
     def _send_json(self, data):
@@ -194,15 +193,15 @@ class SignalingHandler(BaseHTTPRequestHandler):
 
 def main():
     """Start the mock signaling server."""
-    host = '127.0.0.1'
+    host = '0.0.0.0'
     port = 8080
 
     server = HTTPServer((host, port), SignalingHandler)
     print(f'[Server] Starting WebRTC mock signaling server on {host}:{port}')
     print(f'[Server] Endpoints:')
     print(f'[Server]   POST /offer -> returns hardcoded answer')
-    print(f'[Server]   POST /ice-candidate -> logs candidate')
-    print(f'[Server]   GET /ice-candidate -> returns mock candidates')
+    print(f'[Server]   POST /peer-candidate -> logs candidate')
+    print(f'[Server]   GET /peer-candidate -> returns mock candidates')
     print(f'[Server] Press Ctrl+C to stop')
 
     try:
