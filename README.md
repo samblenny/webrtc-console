@@ -114,17 +114,15 @@ Goals:
     at the top is off, flip the switch for "Pi Zero Composite" to On, then flip
     the main switch at the top to On.
 
-15. Use `netstat -rn | grep 'Internet\|Gateway\|bridge'` to check for the ICS
+15. Use `netstat -rn | grep 'Gateway\|bridge'` to check for the ICS
     bridge address assigned to the Pi Zero. Something like this is good:
 
     ```
-    $ netstat -rn | grep 'Internet\|Gateway\|bridge'
-    Internet:
+    $ netstat -rn | grep 'Gateway\|bridge' | grep -v '^f...::\| \{20\}'
     Destination        Gateway            Flags               Netif Expire
     default            link#22            UCSIg           bridge100      !
     192.168.2          link#22            UC              bridge100      !
     192.168.2.5        xx.xx.xx.xx.xx.xx  UHLWIi          bridge100   1195
-    ...
     ```
 
     This means the Pi Zero was assigned 192.168.2.5
