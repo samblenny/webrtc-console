@@ -75,7 +75,7 @@ Goals:
    its own thing for customizing the stock SD card image. In a minute, we'll
    run a script that expects fresh, unmodified SD card partitions.
 
-4. Switch the SD card to a USB SD card reder on a Debian box or a Raspberry Pi.
+4. Switch the SD card to a USB SD card reader on a Debian box or Raspberry Pi.
    We can't use macOS here because we need to mount and modify the ext4
    partition.
 
