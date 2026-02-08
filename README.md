@@ -133,6 +133,19 @@ Goals:
     ssh pi@192.168.2.5   # password is "password" unless you edited the hash
     ```
 
+    NOTE: Your internet connection sharing bridge's DHCP server might not give
+    the Pi Zero a consistent IP address across multiple connections. In that
+    case, SSH may complain about server key fingerprints because it expects
+    servers to have a consistent IP. Suppose you try to connect to 192.168.2.5
+    and you get a scary warning from SSH about the key fingerprint changing
+    from what it expected. You can fix the warning by removing the old key
+    fingerprint with `ssh-keygen -R`:
+
+    ```
+    ssh-keygen -R 192.168.2.5
+    ```
+
+
 17. If SSH didn't work, try connecting to the ACM serial device
 
     ```
