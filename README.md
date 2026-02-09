@@ -59,7 +59,9 @@ Goals:
 
 2. Pick Raspberry Pi OS (32-bit) > Raspberry Pi OS Lite (download it)
 
-3. On macOS, flash SD image with dd (☠️DANGER☠️ **Double-check disk number!**)
+3. On macOS, flash SD image with dd
+
+   ☠️DANGER☠️: **Double-check disk number!**
 
    ```
    diskutil list
