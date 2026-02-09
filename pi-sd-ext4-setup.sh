@@ -52,16 +52,29 @@ cat >> "$BOOT/config.txt" << 'EOF'
 dtoverlay=dwc2
 EOF
 
+# Generate random USB device serial number and random MAC address using printf
+# and shuf. The MAC address uses a Locally Administered Address (LAA) OUI
+# starting with 02. This is intended to encourage the host computer's internet
+# connection sharing bridge to assign each Pi Zero a consistent DHCP IP.
+MAC="02:$(printf '%02x:%02x:%02x:%02x:%02x' $(shuf -i 0-255 -n 5))"
+SERIAL="$(printf '%02x' $(shuf -i 0-255 -n 16))"
+echo "Assigning random MAC address: $MAC"
+echo "Assigning random serial number: $SERIAL"
+
 # Create gadget setup script
-# NOTE: this is using a quoted heredoc (<< 'EOF') to escape "$", etc.
+# NOTE: this is using unquoted heredoc (<< EOF rather than << 'EOF') so we can
+# substitute $MAC and $SERIAL now at setup time. We want those to be random
+# between Pi Zero's but consistent across boots for each individual Pi Zero. We
+# escape "\$GADGET" so it will be used as a variable when setup-usb-gadget.sh
+# runs on the Pi Zero.
 GADGET_SCRIPT="$ROOT/usr/bin/setup-usb-gadget.sh"
 sudo mkdir -p "$ROOT/usr/bin"
-sudo tee "$GADGET_SCRIPT" > /dev/null << 'EOF'
+sudo tee "$GADGET_SCRIPT" > /dev/null << EOF
 #!/bin/bash
 modprobe libcomposite
 GADGET=/sys/kernel/config/usb_gadget/g1
-mkdir -p $GADGET
-cd $GADGET
+mkdir -p \$GADGET
+cd \$GADGET
 
 echo 0x1d6b > idVendor
 echo 0x0104 > idProduct
@@ -69,13 +82,16 @@ echo 0x0100 > bcdDevice
 echo 0x0200 > bcdUSB
 
 mkdir -p strings/0x409
-echo "0123456789" > strings/0x409/serialnumber
+echo "$SERIAL" > strings/0x409/serialnumber
 echo "Raspberry Pi" > strings/0x409/manufacturer
 echo "Pi Zero Composite" > strings/0x409/product
 
 mkdir -p configs/c.1
 mkdir -p functions/acm.usb0
 mkdir -p functions/ncm.usb0
+
+# Set the MAC address for the NCM interface
+echo "$MAC" > functions/ncm.usb0/dev_addr
 
 ln -sf functions/acm.usb0 configs/c.1/
 ln -sf functions/ncm.usb0 configs/c.1/
@@ -116,7 +132,35 @@ sudo mkdir -p "$ROOT/etc/systemd/system/getty.target.wants"
 sudo ln -sf /lib/systemd/system/serial-getty@.service \
         "$ROOT/etc/systemd/system/getty.target.wants/serial-getty@ttyGS0.service"
 
+# Create mDNS service definitions for SSH and HTTP services
+
+# SSH service (_ssh._tcp)
+sudo tee "$ROOT/etc/avahi/services/ssh.service" > /dev/null << 'EOF'
+<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">%h</name>
+  <service>
+    <type>_ssh._tcp</type>
+    <port>22</port>
+  </service>
+</service-group>
+EOF
+
+# HTTP service (_http._tcp)
+sudo tee "$ROOT/etc/avahi/services/http.service" > /dev/null << 'EOF'
+<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">%h</name>
+  <service>
+    <type>_http._tcp</type>
+    <port>80</port>
+  </service>
+</service-group>
+EOF
+
 # At this point, we're assuming that dhcpcd is running and that it will use
 # DHCP to set a suitable address for the NCM usb0 interface.
 
-echo "SD card prepared: Pi Zero will boot headless with USB ACM + NCM + DHCP + SSH."
+echo "SD card prepared: Pi Zero will boot headless with USB ACM + NCM + SSH"

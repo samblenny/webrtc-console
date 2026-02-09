@@ -66,6 +66,7 @@ Goals:
    diskutil unmountDisk /dev/disk4
    sudo dd if=2025-12-04-raspios-trixie-armhf-lite.img of=/dev/rdisk4 bs=1M
    sync
+   diskutil unmountDisk /dev/disk4
    ```
 
    Arguably, it might make more sense to do the Linux equivalent of this on a
@@ -99,7 +100,7 @@ Goals:
 9. Run `./pi-sd-ext4-setup.sh` to drop config files, make systemd symlinks, and
    so on to prepare the SD partitions for first boot.
 
-10. Unmount the partions with `pumount piboot` and `pumount piroot`.
+10. Unmount the partions with `pumount piboot; pumount piroot`.
 
 11. Move the SD card to the Pi Zero W
 
@@ -115,7 +116,10 @@ Goals:
     the main switch at the top to On.
 
 15. Use `netstat -rn | grep 'Gateway\|bridge'` to check for the ICS
-    bridge address assigned to the Pi Zero. Something like this is good:
+    bridge address assigned to the Pi Zero. The first time you boot the Pi
+    Zero, it might take on the order of 2-4 minutes to reach this stage.
+
+    Something like this is what you want to see:
 
     ```
     $ netstat -rn | grep 'Gateway\|bridge' | grep -v '^f...::\| \{20\}'
@@ -125,28 +129,62 @@ Goals:
     192.168.2.5        xx.xx.xx.xx.xx.xx  UHLWIi          bridge100   1195
     ```
 
-    This means the Pi Zero was assigned 192.168.2.5
+    This means the USB NCM internet connection sharing bridge is active and
+    that its DHCP server assigned the Pi Zero IP address 192.168.2.5.
 
-16. Try to SSH into the pi using the IP from netstat, for example:
+16. Try to find the mDNS SSH service advertisement by running `dns-sd` from the
+    macOS Terminal (Ctrl-C to exit):
 
     ```
-    ssh pi@192.168.2.5   # password is "password" unless you edited the hash
+    $ dns-sd -B _ssh._tcp
+    Browsing for _ssh._tcp
+    DATE: ---Sun 08 Feb 2026---
+    17:45:23.821  ...STARTING...
+    Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+    17:45:23.822  Add        2  22 local.               _ssh._tcp.           raspberrypi
+    17:45:23.995  Add        2  28 local.               _ssh._tcp.           raspberrypi
+    ^C
     ```
 
-    NOTE: Your internet connection sharing bridge's DHCP server might not give
-    the Pi Zero a consistent IP address across multiple connections. In that
-    case, SSH may complain about server key fingerprints because it expects
-    servers to have a consistent IP. Suppose you try to connect to 192.168.2.5
-    and you get a scary warning from SSH about the key fingerprint changing
-    from what it expected. You can fix the warning by removing the old key
-    fingerprint with `ssh-keygen -R`:
+    In this case, it's showing us that `ssh pi@raspberrypi.local` should work.
+    Note that mDNS can be a bit unpredictable. If you don't see any lines with
+    `_ssh._tcp` in the output, then mDNS name resolution might not work. In
+    that case, try using the IP address detected by `netstat`.
+
+17. Try to SSH into the pi using the mDNS name or the IP from netstat, for
+    example:
+
+    ```
+    ssh pi@raspberrypi.local   # password is "password"
+    ```
+    or
+
+    ```
+    ssh pi@192.168.2.5   # password is "password"
+    ```
+
+    NOTE: For various reasons, doing this type of thing may result in a scary
+    warning from SSH complaining about incorrect server key fingerprints. This
+    can happen if you re-flash the SD card, if you use two Pi Zeros that both
+    report their hostname as raspberrypi.local, if your DHCP server does not
+    assign long-term consistent IP addresses, etc. There's an easy fix with
+    `ssh-keygen -R`. Suppose you try to connect to 192.168.2.5 and SSH
+    complains about the key fingerprint. You can fix the warning by removing
+    the old key fingerprint for that server (192.168.2.5):
 
     ```
     ssh-keygen -R 192.168.2.5
     ```
+    you can also do
+    ```
+    ssh-keygen -R raspberrypi.local
+    ```
 
+    ☠️DANGER☠️: Don't casually use this trick for SSH servers outside of your
+    own private test networks. If you see SSH key fingerprint errors for an SSH
+    server hosted on the public internet, take the warning seriously.
 
-17. If SSH didn't work, try connecting to the ACM serial device
+18. If SSH didn't work, try connecting to the ACM serial device
 
     ```
     $ ls /dev/tty.usbmodem*
@@ -174,9 +212,51 @@ Goals:
 
 **TODO:** Research if there is a good way to suppress the terminal position
 report escape sequence stuff. This may be happening as a consequence of:
-1. macOS probing the serial port with a cursor position query (`ESC[6n`)
-2. The getty echoing the query characters back to the macOS Terminal
-3. Terminal typing its answer to the echoed copy of its own terminal position
-   query, which the getty then erroneously treats as a typed username
+1. One of macOS, `agetty`, or `login` probing the serial port with a cursor
+   position query (`ESC[6n`)
+2. Potentially some kind of weird echo loop thing happening
+3. macOS Terminal seeing the query sequence and sending a response
+4. `agetty` or `login` treating the query response escape sequence as a
+   typed response to the login prompt
 
 I'm not at all sure about that. Just guessing.
+
+
+## MacOS mDNS Browsing
+
+To find the Pi Zero's advertised mDNS services from avahi-daemon, you can use
+`dns-sd` (Ctrl-C to stop browsing):
+
+```
+$ dns-sd -B _ssh._tcp
+Browsing for _ssh._tcp
+DATE: ---Sun 08 Feb 2026---
+17:26:58.569  ...STARTING...
+Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+17:26:58.571  Add        2  22 local.               _ssh._tcp.           raspberrypi
+17:26:58.731  Add        2  27 local.               _ssh._tcp.           raspberrypi
+^C
+$ dns-sd -B _http._tcp
+Browsing for _http._tcp
+DATE: ---Sun 08 Feb 2026---
+17:27:12.038  ...STARTING...
+Timestamp     A/R    Flags  if Domain               Service Type         Instance Name
+17:27:12.039  Add        2  22 local.               _http._tcp.          raspberrypi
+17:27:12.264  Add        2  27 local.               _http._tcp.          raspberrypi
+^C
+```
+
+In the above example, `dns-sd` is telling us that `raspberrypi.local` should
+work for SSH and HTTP.
+
+You can try:
+1. From macOS Terminal: `ssh pi@raspberrypi.local` (password = "password")
+2. In the resulting SSH shell, do `python3 -m http.server` to start a web
+   server on 0.0.0.0:8000.
+3. From macOS Safari, load `http://raspberrypi.local:8000`. You should see a
+   file listing for pi's home directory dot files on the Pi Zero.
+
+Note: Chrome will likely refuse to talk to the IP address because it's in a
+private address range ("This site can't be reached...
+ERR\_ADDRESS\_UNREACHABLE"). This is a known issue with Chrome. Safari should
+work. A python localhost proxy script should work.
