@@ -224,6 +224,17 @@ report escape sequence stuff. This may be happening as a consequence of:
 I'm not at all sure about that. Just guessing.
 
 
+## Additional Pi Setup
+
+Once I have SSH and an internet connection working, I like to do these
+additional configuration steps:
+
+1. `sudo apt update && sudo apt upgrade`
+2. `sudo raspi-config`
+   - Localisation Options > {Locale, Timezone} (set them both)
+   - Advanced Options > Logging > Volatile
+
+
 ## MacOS mDNS Browsing
 
 To find the Pi Zero's advertised mDNS services from avahi-daemon, you can use
