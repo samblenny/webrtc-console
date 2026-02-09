@@ -59,6 +59,10 @@ Goals:
 
 2. Pick Raspberry Pi OS (32-bit) > Raspberry Pi OS Lite (download it)
 
+   You can expand the .xz archive in the macOS Finder by double-clicking on the
+   file in your Downloads folder. You'll need the unarchived .img file for
+   flashing the SD card.
+
 3. On macOS, flash SD image with dd
 
    ☠️DANGER☠️: **Double-check disk number!**
@@ -66,6 +70,7 @@ Goals:
    ```
    diskutil list
    diskutil unmountDisk /dev/disk4
+   cd ~/Downloads
    sudo dd if=2025-12-04-raspios-trixie-armhf-lite.img of=/dev/rdisk4 bs=1M
    sync
    diskutil unmountDisk /dev/disk4
