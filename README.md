@@ -234,10 +234,30 @@ I'm not at all sure about that. Just guessing.
 Once I have SSH and an internet connection working, I like to do these
 additional configuration steps:
 
-1. `sudo apt update && sudo apt upgrade`
-2. `sudo raspi-config`
+1. Get updates with: `sudo apt update && sudo apt upgrade`
+
+2. Set config options with `sudo raspi-config`:
    - Localisation Options > {Locale, Timezone} (set them both)
    - Advanced Options > Logging > Volatile
+
+3. Install useful packages
+
+   ```
+   sudo apt install figlet git ripgrep vim
+   ```
+
+4. Replace noisy SSH login messages with a simple hostname banner:
+
+   ```
+   figlet -f small $(hostname) | sed '$a\\' | sudo tee /etc/motd
+   sudo sed -i '/^session.*motd\.dynamic/s/^/# /' /etc/pam.d/sshd
+   sudo rm /etc/profile.d/wifi-check.sh
+   sudo tee /etc/ssh/sshd_config.d/99-custom.conf >/dev/null << 'EOF'
+   PrintLastLog no
+   EOF
+   sudo systemctl restart sshd.service
+   ```
+
 
 
 ## MacOS mDNS Browsing
