@@ -258,6 +258,46 @@ additional configuration steps:
    sudo systemctl restart sshd.service
    ```
 
+5. Install TigerVNC
+   ```
+   sudo apt install tigervnc-standalone-server openbox
+   # Set password to 123456 or whatever (gets stored to .vnc/passwd)
+   tigervncpasswd
+   # Make a config file, mainly to override the localhost-only default
+   mkdir -p $HOME/.config/tigervnc
+   cat <<'EOF' > ~/.config/tigervnc/config.pl
+   $geometry = "640x480";
+   $depth = "24";
+   $localhost = "no";
+   $SecurityTypes = "VncAuth";
+   EOF
+   ```
+
+   Add VNC start/stop convenience functions to .bashrc
+   ```
+   cat <<'EOF' >> ~/.bashrc
+   function vnc-start() { tigervncserver :1; }
+   function vnc-stop() { tigervncserver -kill :1; }
+   EOF
+   ```
+
+   Set OpenBox desktop background color
+   ```
+   mkdir -p ~/.config/openbox
+   cat <<'EOF' >> ~/.config/openbox/autostart.sh
+   xsetroot -solid "#6f206f"
+   EOF
+   ```
+
+   Start the server
+   ```
+   vnc-start
+   ```
+
+   Stop the server
+   ```
+   vnc-stop
+   ```
 
 
 ## MacOS mDNS Browsing
